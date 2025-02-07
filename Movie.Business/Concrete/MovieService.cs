@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 using System.Net.Http;
 using System.Threading.Tasks;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Movie.Business.Concrete
 {
@@ -102,7 +103,7 @@ namespace Movie.Business.Concrete
             var items = await _movieRepository.GetAll();
             if (items.Count != 0)
             {
-                var searchList = items.Where(i => i.Title.ToLower().Contains(query) || i.OriginalTitle.ToLower().Contains(query)).ToList();
+                var searchList = items.Where(i => i.Title.ToLower().Contains(query.ToLower()) || i.OriginalTitle.ToLower().Contains(query.ToLower())).ToList();
                 if (searchList.Any())
                 {
                     return searchList;
@@ -128,24 +129,24 @@ namespace Movie.Business.Concrete
                 }
                 if (vote.HasValue)
                 {
-                    searchList = items.Where(i => i.VoteAverage>=vote).ToList();
+                    searchList = items.Where(i => (int)Math.Round(i.VoteAverage)>=vote).ToList();
                 }
               
             }
             return searchList;
         }
-        public async Task<List<Film>> FilterFilmForApi(string? language, string? year, int? vote)
+        public async Task<List<Film>> FilterFilmForApi(string? language, int? year, double? vote)
         {
            
 
-            var url_ = $"https://api.themoviedb.org/3/search/movie?api_key={_configuration["TMDB:ApiKey"]}";
+            var url_ = $"https://api.themoviedb.org/3/search/movie?api_key={_configuration["TMDB:ApiKey"]}&page=1";
             if (language != null)
             {
                 url_ += $"&original_language={language}";
             }
-            if (year!=null)
+            if (year.HasValue)
             {
-                url_ += $"&release_date={year}";
+                url_ += $"&year={year}";
             }
             if (vote.HasValue)
             {

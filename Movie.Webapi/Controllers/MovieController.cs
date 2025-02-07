@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Movie.Business.Abstract;
 using Movie.Entities.Models;
@@ -11,11 +12,27 @@ namespace Movie.Webapi.Controllers
     public class MovieController : ControllerBase
     {
         private readonly IMovieService _movieService;
-
+        private static List<MovieDto> GetMovieDto(List<Film> films)
+        {
+            return films.Select(item => new MovieDto
+            {
+                Title = item.Title,
+                ReleaseDate = item.ReleaseDate,
+                GenreIds = item.GenreIds,
+                OriginalLanguage = item.OriginalLanguage,
+                Popularity = item.Popularity,
+                PosterPath = item.PosterPath,
+                OriginalTitle = item.OriginalTitle,
+                VoteAverage = item.VoteAverage,
+                VoteCount = item.VoteCount,
+                Overview = item.Overview,
+            }).ToList();
+        }
         public MovieController(IMovieService movieService)
         {
             _movieService = movieService;
         }
+        [Authorize(Roles ="User")]
         [HttpPost("NewMovieInWatchlist/{id}")]
         public async Task<IActionResult> AddMovieTWatchlist(int id)
         {
@@ -49,7 +66,7 @@ namespace Movie.Webapi.Controllers
             await _movieService.AddMovie(item);
             return Ok(item);
         }
-
+        //see everyone
         [HttpGet("TrendMovies")]
         public async Task<IActionResult> GetTrendMovies()
         {
@@ -59,24 +76,12 @@ namespace Movie.Webapi.Controllers
                 return NotFound(new { Message = "No trending movies found." });
             }
 
-            var list = items.Select(p => new MovieDto
-            {
-                Id = p.Id,
-                ReleaseDate = p.ReleaseDate,
-                GenreIds = p.GenreIds,
-                OriginalLanguage = p.OriginalLanguage,
-                Popularity = p.Popularity,
-                PosterPath = p.PosterPath,
-                OriginalTitle = p.OriginalTitle,
-                VoteAverage = p.VoteAverage,
-                VoteCount = p.VoteCount,
-                Overview = p.Overview,
-            }).ToList();
+            var list = GetMovieDto(items);
 
             return Ok(list);
         }
 
-
+        [Authorize(Roles = "User,Admin")]
         [HttpGet("WatchlistMovies")]
         public async Task<IActionResult> GetWatchListMovies()
         {
@@ -86,22 +91,11 @@ namespace Movie.Webapi.Controllers
                 return NotFound(new { Message = "Watchlist is empty." });
             }
 
-            var list = items.Select(p => new MovieDto
-            {
-                ReleaseDate = p.ReleaseDate,
-                GenreIds = p.GenreIds,
-                OriginalLanguage = p.OriginalLanguage,
-                Popularity = p.Popularity,
-                PosterPath = p.PosterPath,
-                OriginalTitle = p.OriginalTitle,
-                VoteAverage = p.VoteAverage,
-                VoteCount = p.VoteCount,
-                Overview = p.Overview,
-            }).ToList();
+            var list = GetMovieDto(items);
             return Ok(list);
         }
 
-         
+        [Authorize(Roles = "User,Admin")]
         [HttpGet("MovieDetailByIdFromList/{id}")]
         public async Task<IActionResult> GetMovie([FromRoute] int id)
         {
@@ -150,7 +144,7 @@ namespace Movie.Webapi.Controllers
             };
             return Ok(movie);
         }
-
+        [Authorize(Roles = "User,Admin")]
         [HttpDelete("DeletedMovieFromWatchList/{id}")]
         public async Task<IActionResult> DeleteMovieFromWatchList(int id)
         {
@@ -168,7 +162,7 @@ namespace Movie.Webapi.Controllers
             await _movieService.DeleteMovie(id);
             return Ok(new { Message = "Movie deleted successfully" });
         }
-
+        [Authorize(Roles = "User,Admin")]
         [HttpPut("UpdatedMovieFromWatchList/{id}")]
         public async Task<IActionResult> UpdatedMovie(int id, [FromBody] MovieDto dto)
         {
@@ -181,6 +175,7 @@ namespace Movie.Webapi.Controllers
             {
                 return BadRequest(ModelState);
             }
+             
 
             var movie = await _movieService.GetMovieByIdForWatchList(id);
             if (movie == null)
@@ -199,12 +194,13 @@ namespace Movie.Webapi.Controllers
             movie.GenreIds = dto.GenreIds;
             movie.OriginalLanguage = dto.OriginalLanguage;
             movie.PosterPath = dto.PosterPath;
-
+            movie.ReleaseDate = dto.ReleaseDate;
             await _movieService.UpdateMovie(movie);
             return Ok(new { Message = "Updated successfully Movie" });
         }
 
         //search movie for name when added to watchlist
+        [Authorize(Roles = "User")]
         [HttpGet("MovieByTitleFromList")]
         public async Task<IActionResult> GetMovieByTitleFromList(string query)
         {
@@ -213,19 +209,7 @@ namespace Movie.Webapi.Controllers
             {
                 return NotFound(new { Message = "Movie not found!" });
             }
-            var movies =items.Select(item=> new MovieDto
-            {
-                Title = item.Title,
-                ReleaseDate = item.ReleaseDate,
-                GenreIds = item.GenreIds,
-                OriginalLanguage = item.OriginalLanguage,
-                Popularity = item.Popularity,
-                PosterPath = item.PosterPath,
-                OriginalTitle = item.OriginalTitle,
-                VoteAverage = item.VoteAverage,
-                VoteCount = item.VoteCount,
-                Overview = item.Overview,
-            });
+            var movies = GetMovieDto(items);
             return Ok(movies);
         }
 
@@ -238,24 +222,13 @@ namespace Movie.Webapi.Controllers
             {
                 return NotFound(new { Message = "Movie not found!" });
             }
-            var movies = items.Select(item => new MovieDto
-            {
-                Title = item.Title,
-                ReleaseDate = item.ReleaseDate,
-                GenreIds = item.GenreIds,
-                OriginalLanguage = item.OriginalLanguage,
-                Popularity = item.Popularity,
-                PosterPath = item.PosterPath,
-                OriginalTitle = item.OriginalTitle,
-                VoteAverage = item.VoteAverage,
-                VoteCount = item.VoteCount,
-                Overview = item.Overview,
-            });
+            var movies = GetMovieDto(items);
             return Ok(movies);
         }
 
 
         //filter movie when added to watchlist
+        [Authorize(Roles = "User,Admin")]
         [HttpGet("FilteredMovieFromList")]
         public async Task<IActionResult> GetFilterMovieFromList(string? language,string? year,int? vote)
         {
@@ -264,44 +237,20 @@ namespace Movie.Webapi.Controllers
             {
                 return NotFound(new { Message = "Movie not found!" });
             }
-            var movies = items.Select(item => new MovieDto
-            {
-                Title = item.Title,
-                ReleaseDate = item.ReleaseDate,
-                GenreIds = item.GenreIds,
-                OriginalLanguage = item.OriginalLanguage,
-                Popularity = item.Popularity,
-                PosterPath = item.PosterPath,
-                OriginalTitle = item.OriginalTitle,
-                VoteAverage = item.VoteAverage,
-                VoteCount = item.VoteCount,
-                Overview = item.Overview,
-            });
+            var movies = GetMovieDto(items);
             return Ok(movies);
         }
 
         //filter movie  from api
         [HttpGet("FilteredMovieFromApi")]
-        public async Task<IActionResult> GetFilterMoviFromApi(string? language, string? year, int? vote)
+        public async Task<IActionResult> GetFilterMoviFromApi(string? language, int? year, int? vote)
         {
             var items = await _movieService.FilterFilmForApi(language,year,vote);
             if (items == null)
             {
                 return NotFound(new { Message = "Movie not found!" });
             }
-            var movies = items.Select(item => new MovieDto
-            {
-                Title = item.Title,
-                ReleaseDate = item.ReleaseDate,
-                GenreIds = item.GenreIds,
-                OriginalLanguage = item.OriginalLanguage,
-                Popularity = item.Popularity,
-                PosterPath = item.PosterPath,
-                OriginalTitle = item.OriginalTitle,
-                VoteAverage = item.VoteAverage,
-                VoteCount = item.VoteCount,
-                Overview = item.Overview,
-            });
+            var movies = GetMovieDto(items);
             return Ok(movies);
         }
 

@@ -18,7 +18,7 @@ namespace Movie.Business.Abstract
         public Task DeleteMovie(int id);
         public Task<List<Film>> SearchFilmFromApi(string query);
         public Task<List<Film>> SearchFilmFromList(string query);
-        public Task<List<Film>> FilterFilmForApi(string? language, string? year, int? vote);
+        public Task<List<Film>> FilterFilmForApi(string? language, int? year, double? vote);
         public Task<List<Film>> FilterFilmForList(string? language, string? year, int? vote);
     }
 }
